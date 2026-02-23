@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── NextAuth Models ──────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Core Models ──────────────────────────────────────────
+
+model User {
+  id              String    @id @default(cuid())
+  name            String?
+  email           String?   @unique
+  emailVerified   DateTime?
+  image           String?
+  phone           String?   @unique
+  whatsappLinked  Boolean   @default(false)
+
+  // Job Preferences
+  preferredRole   String?
+  skills          String[]
+  experienceLevel String?   // "fresher", "junior", "mid", "senior", "lead"
+  preferredLocation String?
+  salaryMin       Int?
+  salaryMax       Int?
+  jobTypes        String[]  // "remote", "hybrid", "onsite"
+
+  // Notification Preferences
+  briefingTime    String    @default("08:00")
+  timezone        String    @default("Asia/Kolkata")
+  briefingEnabled Boolean   @default(true)
+  trendAlerts     Boolean   @default(true)
+  reminderBefore  Int       @default(120) // minutes
+
+  // Onboarding
+  onboarded       Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  applications    Application[]
+  conversations   Conversation[]
+  notifications   Notification[]
+  watchlist       CompanyWatchlist[]
+}
+
+model Job {
+  id          String   @id @default(cuid())
+  title       String
+  company     String
+  location    String?
+  salary      String?
+  salaryMin   Int?
+  salaryMax   Int?
+  url         String   @unique
+  source      String   // "linkedin", "naukri", "indeed", "company", "jsearch"
+  description String?  @db.Text
+  skills      String[]
+  jobType     String?  // "remote", "hybrid", "onsite"
+  experience  String?
+  postedAt    DateTime?
+  scrapedAt   DateTime @default(now())
+  active      Boolean  @default(true)
+
+  applications Application[]
+
+  @@index([source])
+  @@index([postedAt])
+  @@index([company])
+}
+
+model Application {
+  id        String            @id @default(cuid())
+  userId    String
+  jobId     String
+  status    ApplicationStatus @default(APPLIED)
+  notes     String?           @db.Text
+  appliedAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job        Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  interviews Interview[]
+
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@index([status])
+}
+
+enum ApplicationStatus {
+  APPLIED
+  IN_REVIEW
+  INTERVIEW
+  OFFER
+  REJECTED
+}
+
+model Interview {
+  id            String   @id @default(cuid())
+  applicationId String
+  scheduledAt   DateTime
+  type          String?  // "phone", "video", "onsite", "technical", "hr"
+  notes         String?  @db.Text
+  prepNotes     String?  @db.Text
+  reminded      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([scheduledAt])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  messages  Json     @default("[]")
+  channel   String   @default("whatsapp") // "whatsapp" or "web"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  content   String           @db.Text
+  read      Boolean          @default(false)
+  sentAt    DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([sentAt])
+}
+
+enum NotificationType {
+  BRIEFING
+  INTERVIEW_REMINDER
+  APPLICATION_UPDATE
+  NEW_MATCH
+  MARKET_TREND
+  SYSTEM
+}
+
+model CompanyWatchlist {
+  id          String   @id @default(cuid())
+  userId      String
+  companyName String
+  careerUrl   String?
+  lastChecked DateTime?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyName])
+}
+
+model MarketTrend {
+  id        String   @id @default(cuid())
+  role      String
+  location  String?
+  count     Int
+  avgSalary Int?
+  topSkills String[]
+  week      DateTime
+  createdAt DateTime @default(now())
+
+  @@index([role, week])
+  @@index([location, week])
+}
+
+model ScrapeLog {
+  id        String   @id @default(cuid())
+  source    String
+  jobsFound Int      @default(0)
+  jobsNew   Int      @default(0)
+  duration  Int?     // milliseconds
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([source, createdAt])
+}
