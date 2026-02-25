@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { chat, type ChatMessage, type UserContext } from "@/lib/claude";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { db } from "@/lib/db";
-import { searchJobs, formatJobsForClaude } from "@/lib/jsearch";
+import { searchAllPlatforms, formatJobsForClaude } from "@/lib/scraper";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const EXTRACT_API = "https://santaai-production-fba8.up.railway.app/extract";
@@ -164,11 +164,7 @@ export async function POST(req: NextRequest) {
         if (isJobSearchIntent(messageText) && dbUser) {
             try {
                 const query = dbUser.preferredRole ?? messageText;
-                const jobs = await searchJobs({
-                    query,
-                    location: dbUser.preferredLocation ?? undefined,
-                    remoteOnly: dbUser.jobTypes?.includes('remote'),
-                });
+                const jobs = await searchAllPlatforms(query, dbUser.preferredLocation ?? undefined);
                 if (jobs.length > 0) {
                     jobContext = `\n\n--- Live Job Listings (fetched right now) ---\n${formatJobsForClaude(jobs)}\n---\nPresent these jobs to the user. Include the apply links. Do not say you cannot access the internet — these jobs were fetched for you.`;
                 }
