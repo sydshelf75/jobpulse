@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const EXTRACT_API = "https://santaai-production-fba8.up.railway.app/extract";
 
-async function downloadTelegramFile(fileId: string): Promise<Buffer | null> {
+async function downloadTelegramFile(fileId: string): Promise<Blob | null> {
     try {
         // Step 1: Get file path from Telegram
         const fileRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
@@ -17,8 +17,7 @@ async function downloadTelegramFile(fileId: string): Promise<Buffer | null> {
         const downloadRes = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`);
         if (!downloadRes.ok) return null;
 
-        const arrayBuffer = await downloadRes.arrayBuffer();
-        return Buffer.from(arrayBuffer);
+        return await downloadRes.blob();
     } catch {
         return null;
     }
@@ -28,15 +27,14 @@ async function handlePdfUpload(chatId: string, fileId: string, fileName: string)
     await sendTelegramMessage(chatId, "📄 Got your resume! Extracting text...");
 
     // Download from Telegram
-    const fileBuffer = await downloadTelegramFile(fileId);
-    if (!fileBuffer) {
+    const fileBlob = await downloadTelegramFile(fileId);
+    if (!fileBlob) {
         return "❌ Couldn't download the file. Please try again.";
     }
 
     // Send to santaai extraction API
     const formData = new FormData();
-    const blob = new Blob([fileBuffer], { type: "application/pdf" });
-    formData.append("file", blob, fileName);
+    formData.append("file", fileBlob, fileName);
     formData.append("file_type", "pdf");
 
     const extractRes = await fetch(EXTRACT_API, { method: "POST", body: formData });
@@ -91,10 +89,22 @@ export async function POST(req: NextRequest) {
         const messageText = update?.message?.text || "";
         if (!messageText) return NextResponse.json({ ok: true });
 
-        // Look up user by Telegram chat ID to inject context
-        const user = await db.user.findUnique({
+        // Load conversation history from DB
+        const conversation = await db.conversation.findFirst({
+            where: { channel: "telegram", user: { telegramChatId: chatId } },
+            orderBy: { updatedAt: "desc" },
+        });
+        const history: ChatMessage[] = conversation ? (conversation.messages as ChatMessage[]) : [];
+
+        // Build messages array including history (last 10 messages max)
+        const recentHistory = history.slice(-10);
+        const messages: ChatMessage[] = [...recentHistory, { role: "user", content: messageText }];
+
+        // Find or create user — single query reused for both context and conversation save
+        let dbUser = await db.user.findUnique({
             where: { telegramChatId: chatId },
             select: {
+                id: true,
                 preferredRole: true,
                 skills: true,
                 experienceLevel: true,
@@ -105,28 +115,61 @@ export async function POST(req: NextRequest) {
                 resumeText: true,
             },
         });
+        if (!dbUser) {
+            dbUser = await db.user.create({
+                data: { telegramChatId: chatId },
+                select: {
+                    id: true,
+                    preferredRole: true,
+                    skills: true,
+                    experienceLevel: true,
+                    preferredLocation: true,
+                    salaryMin: true,
+                    salaryMax: true,
+                    jobTypes: true,
+                    resumeText: true,
+                },
+            });
+        }
 
+        // Build user context from the single user query
         let userContext: UserContext | undefined;
-        if (user) {
-            const profileParts: string[] = [];
-            if (user.preferredRole) profileParts.push(`Role: ${user.preferredRole}`);
-            if (user.experienceLevel) profileParts.push(`Experience: ${user.experienceLevel}`);
-            if (user.skills?.length) profileParts.push(`Skills: ${user.skills.join(", ")}`);
-            if (user.preferredLocation) profileParts.push(`Location: ${user.preferredLocation}`);
-            if (user.salaryMin || user.salaryMax) {
-                profileParts.push(`Salary: ₹${user.salaryMin ?? "?"} – ₹${user.salaryMax ?? "?"} LPA`);
-            }
-            if (user.jobTypes?.length) profileParts.push(`Job types: ${user.jobTypes.join(", ")}`);
+        const profileParts: string[] = [];
+        if (dbUser.preferredRole) profileParts.push(`Role: ${dbUser.preferredRole}`);
+        if (dbUser.experienceLevel) profileParts.push(`Experience: ${dbUser.experienceLevel}`);
+        if (dbUser.skills?.length) profileParts.push(`Skills: ${dbUser.skills.join(", ")}`);
+        if (dbUser.preferredLocation) profileParts.push(`Location: ${dbUser.preferredLocation}`);
+        if (dbUser.salaryMin || dbUser.salaryMax) {
+            profileParts.push(`Salary: ₹${dbUser.salaryMin ?? "?"} – ₹${dbUser.salaryMax ?? "?"} LPA`);
+        }
+        if (dbUser.jobTypes?.length) profileParts.push(`Job types: ${dbUser.jobTypes.join(", ")}`);
 
+        if (profileParts.length || dbUser.resumeText) {
             userContext = {
                 userProfile: profileParts.length ? profileParts.join("\n") : undefined,
-                resume: user.resumeText ?? undefined,
+                resume: dbUser.resumeText ?? undefined,
             };
         }
 
         // Process with Claude AI
-        const messages: ChatMessage[] = [{ role: "user", content: messageText }];
         const aiResponse = await chat(messages, userContext);
+
+        // Save/update conversation in DB
+        const updatedMessages = [
+            ...recentHistory,
+            { role: "user", content: messageText },
+            { role: "assistant", content: aiResponse },
+        ];
+        if (conversation) {
+            await db.conversation.update({
+                where: { id: conversation.id },
+                data: { messages: updatedMessages, updatedAt: new Date() },
+            });
+        } else {
+            await db.conversation.create({
+                data: { userId: dbUser.id, channel: "telegram", messages: updatedMessages },
+            });
+        }
 
         await sendTelegramMessage(chatId, aiResponse);
 
