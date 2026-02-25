@@ -199,7 +199,7 @@ export default function InterviewsPage() {
                         No interviews scheduled
                     </h3>
                     <p className="text-sm text-[var(--text-tertiary)] mt-1">
-                        Add interviews from the Applications page or via WhatsApp
+                        Add interviews from the Applications page or via Telegram
                     </p>
                 </div>
             )}

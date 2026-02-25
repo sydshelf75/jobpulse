@@ -1,31 +1,26 @@
-import twilio from "twilio";
+import TelegramBot from "node-telegram-bot-api";
 
-const client =
-    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
-        ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
-        : null;
+const token = process.env.TELEGRAM_BOT_TOKEN;
 
-const FROM_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER || "whatsapp:+14155238886";
+const bot = token
+    ? new TelegramBot(token)
+    : null;
 
-export async function sendWhatsAppMessage(
-    to: string,
-    body: string
-): Promise<{ success: boolean; sid?: string; error?: string }> {
-    if (!client) {
-        console.log(`[WhatsApp Mock] To: ${to}\n${body}`);
-        return { success: true, sid: "mock-sid-" + Date.now() };
+export async function sendTelegramMessage(
+    chatId: string,
+    text: string
+): Promise<{ success: boolean; messageId?: number; error?: string }> {
+    if (!bot) {
+        console.log(`[Telegram Mock] To: ${chatId}\n${text}`);
+        return { success: true, messageId: Date.now() };
     }
 
     try {
-        const message = await client.messages.create({
-            from: FROM_NUMBER,
-            to: to.startsWith("whatsapp:") ? to : `whatsapp:${to}`,
-            body,
-        });
-        return { success: true, sid: message.sid };
+        const message = await bot.sendMessage(chatId, text, { parse_mode: "Markdown" });
+        return { success: true, messageId: message.message_id };
     } catch (error) {
         const errMsg = error instanceof Error ? error.message : "Unknown error";
-        console.error("[WhatsApp Error]", errMsg);
+        console.error("[Telegram Error]", errMsg);
         return { success: false, error: errMsg };
     }
 }

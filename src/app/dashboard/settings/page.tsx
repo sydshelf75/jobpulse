@@ -47,7 +47,7 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input label="Name" id="name" value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} />
                     <Input label="Email" id="email" type="email" value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} />
-                    <Input label="Phone (WhatsApp)" id="phone" value={profile.phone || ""} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} />
+                    <Input label="Telegram Chat ID" id="phone" value={profile.phone || ""} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} />
                 </div>
             </Card>
 
@@ -142,7 +142,7 @@ export default function SettingsPage() {
 
                     <div className="space-y-3">
                         {[
-                            { key: "briefingEnabled", label: "Daily Briefing", desc: "Receive daily job briefings on WhatsApp" },
+                            { key: "briefingEnabled", label: "Daily Briefing", desc: "Receive daily job briefings on Telegram" },
                             { key: "trendAlerts", label: "Market Trend Alerts", desc: "Weekly market trend updates" },
                         ].map((item) => (
                             <div key={item.key} className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-tertiary)]">

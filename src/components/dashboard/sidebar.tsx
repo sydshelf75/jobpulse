@@ -109,7 +109,7 @@ export function Sidebar() {
                         className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-all"
                     >
                         <MessageCircle className="w-4.5 h-4.5" />
-                        WhatsApp Chat
+                        Telegram Chat
                     </Link>
                     <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 transition-all w-full">
                         <LogOut className="w-4.5 h-4.5" />

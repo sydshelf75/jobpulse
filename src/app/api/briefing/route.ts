@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { mockJobs, mockApplications, mockInterviews } from "@/lib/mock-data";
-import { formatBriefing } from "@/lib/whatsapp";
+import { formatBriefing } from "@/lib/telegram";
 
 // This endpoint is triggered by cron to compose and send daily briefings
 export async function POST() {
@@ -36,7 +36,7 @@ export async function POST() {
         trend: "Frontend roles in Bangalore up 12% this week",
     });
 
-    // In production: send via WhatsApp to each user
+    // In production: send via Telegram to each user
     console.log("[Daily Briefing] Composed:\n", briefingMessage);
 
     return NextResponse.json({

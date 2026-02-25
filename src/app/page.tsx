@@ -55,7 +55,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto text-center animate-fade-in">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--brand-primary)]/10 border border-[var(--brand-primary)]/20 text-[var(--brand-primary-light)] text-sm mb-8">
             <Sparkles className="w-4 h-4" />
-            AI-Powered Job Search on WhatsApp
+            AI-Powered Job Search on Telegram
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 text-[var(--text-primary)]">
@@ -66,7 +66,7 @@ export default function LandingPage() {
 
           <p className="text-lg md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed">
             Every morning, get a curated briefing of jobs matched to your
-            profile on WhatsApp. Track applications, prep for interviews, and
+            profile on Telegram. Track applications, prep for interviews, and
             chat with AI — all from the app you already use.
           </p>
 
@@ -87,7 +87,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* WhatsApp Mockup */}
+        {/* Telegram Mockup */}
         <div className="max-w-lg mx-auto mt-16 animate-slide-up" style={{ animationDelay: "0.3s" }}>
           <div className="glass-card p-6 rounded-2xl">
             <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[var(--border-default)]">
@@ -147,8 +147,8 @@ export default function LandingPage() {
             {[
               {
                 icon: MessageCircle,
-                title: "WhatsApp AI Chat",
-                desc: "Natural conversations to search jobs, track applications, and manage your career — all from WhatsApp.",
+                title: "Telegram AI Chat",
+                desc: "Natural conversations to search jobs, track applications, and manage your career — all from Telegram.",
                 color: "text-green-400",
                 bg: "bg-green-400/10",
               },
@@ -219,7 +219,7 @@ export default function LandingPage() {
             {[
               {
                 step: "01",
-                title: "Connect on WhatsApp",
+                title: "Connect on Telegram",
                 desc: "Send a message to JobPulse. It walks you through a quick setup — your role, skills, location, and salary range.",
               },
               {
@@ -269,7 +269,7 @@ export default function LandingPage() {
               { name: "Prisma ORM", icon: Zap },
               { name: "Tailwind CSS", icon: Sparkles },
               { name: "Redis + BullMQ", icon: TrendingUp },
-              { name: "Twilio", icon: MessageCircle },
+              { name: "Telegram", icon: MessageCircle },
             ].map((tech) => (
               <div
                 key={tech.name}
@@ -319,7 +319,7 @@ export default function LandingPage() {
             </span>
           </div>
           <p className="text-sm text-[var(--text-muted)]">
-            Built with Next.js, Claude AI & WhatsApp
+            Built with Next.js, Claude AI & Telegram
           </p>
         </div>
       </footer>

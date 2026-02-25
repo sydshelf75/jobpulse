@@ -82,13 +82,17 @@ export const chatMessageSchema = z.object({
 
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
 
-// ─── WhatsApp Webhook Schema ──────────────────────────────
+// ─── Telegram Webhook Schema ──────────────────────────────
 
-export const whatsappWebhookSchema = z.object({
-    From: z.string(),
-    Body: z.string(),
-    MessageSid: z.string().optional(),
-    NumMedia: z.string().optional(),
+export const telegramWebhookSchema = z.object({
+    update_id: z.number(),
+    message: z.object({
+        message_id: z.number(),
+        chat: z.object({
+            id: z.number(),
+        }),
+        text: z.string().optional(),
+    }).optional(),
 });
 
-export type WhatsAppWebhook = z.infer<typeof whatsappWebhookSchema>;
+export type TelegramWebhook = z.infer<typeof telegramWebhookSchema>;

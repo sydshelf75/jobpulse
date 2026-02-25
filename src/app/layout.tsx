@@ -14,12 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "JobPulse — AI Job Agent on WhatsApp",
+  title: "JobPulse — AI Job Agent on Telegram",
   description:
-    "Your personal job search assistant, delivered every morning on WhatsApp. AI-powered job matching, application tracking, and interview prep.",
+    "Your personal job search assistant, delivered every morning on Telegram. AI-powered job matching, application tracking, and interview prep.",
   keywords: [
     "job search",
-    "WhatsApp",
+    "Telegram",
     "AI assistant",
     "application tracker",
     "job matching",
