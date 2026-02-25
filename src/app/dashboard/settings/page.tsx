@@ -1,16 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { mockUser } from "@/lib/mock-data";
-import { Save, User, Bell, Briefcase, MapPin, Clock, Plus, X } from "lucide-react";
+import { Save, User, Bell, Briefcase, MapPin, Clock, Plus, X, FileText, Upload, CheckCircle } from "lucide-react";
 
 export default function SettingsPage() {
     const [profile, setProfile] = useState(mockUser);
     const [newSkill, setNewSkill] = useState("");
     const [saved, setSaved] = useState(false);
+
+    // Resume state
+    const [resumeFileName, setResumeFileName] = useState<string | null>(null);
+    const [resumeUpdatedAt, setResumeUpdatedAt] = useState<string | null>(null);
+    const [hasResume, setHasResume] = useState(false);
+    const [resumeUploading, setResumeUploading] = useState(false);
+    const [resumeMsg, setResumeMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        fetch("/api/user/resume")
+            .then((r) => r.json())
+            .then((data) => {
+                setResumeFileName(data.resumeFileName);
+                setResumeUpdatedAt(data.resumeUpdatedAt);
+                setHasResume(data.hasResume);
+            })
+            .catch(() => {});
+    }, []);
+
+    const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setResumeUploading(true);
+        setResumeMsg(null);
+        const form = new FormData();
+        form.append("resume", file);
+        try {
+            const res = await fetch("/api/user/resume", { method: "POST", body: form });
+            const data = await res.json();
+            if (res.ok) {
+                setResumeFileName(data.fileName);
+                setResumeUpdatedAt(new Date().toISOString());
+                setHasResume(true);
+                setResumeMsg({ type: "success", text: `Uploaded: ${data.fileName} (${data.textLength.toLocaleString()} chars extracted)` });
+            } else {
+                setResumeMsg({ type: "error", text: data.error || "Upload failed" });
+            }
+        } catch {
+            setResumeMsg({ type: "error", text: "Network error — please try again" });
+        } finally {
+            setResumeUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
 
     const handleSave = () => {
         setSaved(true);
@@ -119,6 +164,54 @@ export default function SettingsPage() {
                             ))}
                         </div>
                     </div>
+                </div>
+            </Card>
+
+            {/* Resume */}
+            <Card>
+                <CardHeader><CardTitle><FileText className="w-5 h-5 inline mr-2" />Resume</CardTitle></CardHeader>
+                <div className="space-y-3">
+                    {hasResume && resumeFileName ? (
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-tertiary)]">
+                            <CheckCircle className="w-5 h-5 text-green-400 shrink-0" />
+                            <div className="min-w-0">
+                                <p className="text-sm font-medium text-[var(--text-primary)] truncate">{resumeFileName}</p>
+                                {resumeUpdatedAt && (
+                                    <p className="text-xs text-[var(--text-tertiary)]">
+                                        Updated {new Date(resumeUpdatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-[var(--text-tertiary)]">No resume uploaded yet. Claude will use your profile preferences only.</p>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".pdf"
+                            className="hidden"
+                            onChange={handleResumeUpload}
+                        />
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={resumeUploading}
+                        >
+                            <Upload className="w-4 h-4" />
+                            {resumeUploading ? "Uploading..." : hasResume ? "Replace Resume" : "Upload Resume"}
+                        </Button>
+                        <span className="text-xs text-[var(--text-tertiary)]">PDF only, max 5MB</span>
+                    </div>
+
+                    {resumeMsg && (
+                        <p className={`text-sm ${resumeMsg.type === "success" ? "text-green-400" : "text-red-400"}`}>
+                            {resumeMsg.text}
+                        </p>
+                    )}
                 </div>
             </Card>
 

@@ -29,17 +29,31 @@ When the user asks about jobs, reference their profile preferences.
 When tracking applications, confirm status changes clearly.
 Always be encouraging — job searching is stressful.`;
 
+export interface UserContext {
+    userProfile?: string;
+    resume?: string;
+}
+
 export async function chat(
     messages: ChatMessage[],
-    userContext?: string
+    userContext?: UserContext | string
 ): Promise<string> {
     if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === "mock-key") {
         return getMockResponse(messages[messages.length - 1]?.content || "");
     }
 
-    const systemPrompt = userContext
-        ? `${SYSTEM_PROMPT}\n\n--- User Context ---\n${userContext}`
-        : SYSTEM_PROMPT;
+    let systemPrompt = SYSTEM_PROMPT;
+
+    if (typeof userContext === "string") {
+        systemPrompt = `${SYSTEM_PROMPT}\n\n--- User Context ---\n${userContext}`;
+    } else if (userContext) {
+        if (userContext.userProfile) {
+            systemPrompt += `\n\n--- User Profile ---\n${userContext.userProfile}`;
+        }
+        if (userContext.resume) {
+            systemPrompt += `\n\n--- User Resume ---\n${userContext.resume}\n---\nUse this resume to match jobs, tailor advice, and personalize responses.`;
+        }
+    }
 
     const response = await claude.messages.create({
         model: "claude-sonnet-4-6",

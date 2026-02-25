@@ -54,7 +54,13 @@ model User {
   emailVerified   DateTime?
   image           String?
   phone           String?   @unique
-  whatsappLinked  Boolean   @default(false)
+  telegramLinked  Boolean   @default(false)
+  telegramChatId  String?   @unique
+
+  // Resume
+  resumeText      String?   @db.Text
+  resumeFileName  String?
+  resumeUpdatedAt DateTime?
 
   // Job Preferences
   preferredRole   String?
@@ -156,7 +162,7 @@ model Conversation {
   id        String   @id @default(cuid())
   userId    String
   messages  Json     @default("[]")
-  channel   String   @default("whatsapp") // "whatsapp" or "web"
+  channel   String   @default("web") // "telegram" or "web"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
