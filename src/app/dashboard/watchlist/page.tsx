@@ -28,7 +28,7 @@ export default function WatchlistPage() {
         const newItem = {
             id: `wl-${Date.now()}`,
             companyName: newCompany.trim(),
-            careerUrl: newUrl.trim() || null,
+            careerUrl: newUrl.trim() || "",
             lastChecked: null,
         };
         setWatchlist((prev) => [...prev, newItem]);
