@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { chat, type ChatMessage, type UserContext } from "@/lib/claude";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { db } from "@/lib/db";
+import { searchJobs, formatJobsForClaude } from "@/lib/jsearch";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const EXTRACT_API = "https://santaai-production-fba8.up.railway.app/extract";
@@ -67,6 +68,13 @@ async function handlePdfUpload(chatId: string, fileId: string, fileName: string)
     return `✅ *Resume saved!* (${charCount.toLocaleString()} characters extracted)\n\nI'll now use your resume to match jobs and personalise every response. Send me a message like "find me jobs" to get started!`;
 }
 
+function isJobSearchIntent(text: string): boolean {
+    const lower = text.toLowerCase();
+    return ['find job', 'search job', 'show job', 'job for me', 'hiring', 'opening',
+        'vacancy', 'role', 'position', 'work', 'apply', 'naukri', 'linkedin',
+        'get job', 'job list', 'available job', 'fresher', 'internship'].some(k => lower.includes(k));
+}
+
 export async function POST(req: NextRequest) {
     try {
         const update = await req.json();
@@ -94,7 +102,7 @@ export async function POST(req: NextRequest) {
             where: { channel: "telegram", user: { telegramChatId: chatId } },
             orderBy: { updatedAt: "desc" },
         });
-        const history: ChatMessage[] = conversation ? (conversation.messages as ChatMessage[]) : [];
+        const history: ChatMessage[] = conversation ? (conversation.messages as unknown as ChatMessage[]) : [];
 
         // Build messages array including history (last 10 messages max)
         const recentHistory = history.slice(-10);
@@ -149,6 +157,30 @@ export async function POST(req: NextRequest) {
                 userProfile: profileParts.length ? profileParts.join("\n") : undefined,
                 resume: dbUser.resumeText ?? undefined,
             };
+        }
+
+        // Fetch live jobs if message indicates job search intent
+        let jobContext = '';
+        if (isJobSearchIntent(messageText) && dbUser) {
+            try {
+                const query = dbUser.preferredRole ?? messageText;
+                const jobs = await searchJobs({
+                    query,
+                    location: dbUser.preferredLocation ?? undefined,
+                    remoteOnly: dbUser.jobTypes?.includes('remote'),
+                });
+                if (jobs.length > 0) {
+                    jobContext = `\n\n--- Live Job Listings (fetched right now) ---\n${formatJobsForClaude(jobs)}\n---\nPresent these jobs to the user. Include the apply links. Do not say you cannot access the internet — these jobs were fetched for you.`;
+                }
+            } catch (e) {
+                console.error('JSearch fetch failed:', e);
+            }
+        }
+
+        if (jobContext && userContext) {
+            userContext.userProfile = (userContext.userProfile ?? '') + jobContext;
+        } else if (jobContext) {
+            userContext = { userProfile: jobContext };
         }
 
         // Process with Claude AI
